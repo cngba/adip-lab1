@@ -93,46 +93,53 @@ def thinning(image):
     Performs Zhang-Suen thinning algorithm on a binary image.
     Reduces white regions to single-pixel width while preserving connectivity.
     """
-    if not is_binary(image):
-        print("Thinning: Not a binary image")
-        return None
+    # Convert 255 to 1 for processing
+    image = (image // 255).astype(np.uint8)
     
     img_h, img_w = image.shape
     changed = True
 
     while changed:
         changed = False
+        
+        # First sub-iteration
         to_remove = np.zeros((img_h, img_w), dtype=np.uint8)
-
-        # Iterate over each pixel (excluding border pixels)
         for i in range(1, img_h - 1):
             for j in range(1, img_w - 1):
                 if image[i, j] == 1:
-                    # Extract 3x3 neighborhood
                     neighbors = image[i-1:i+2, j-1:j+2].flatten()
-                    '''
-                    Neighborhood pixel order:
-                    [8 1 2] 
-                    [7   3]
-                    [6 5 4]
-                    '''
-                    P = [neighbors[1], neighbors[2], neighbors[5],
-                         neighbors[8], neighbors[7], neighbors[6],
-                         neighbors[3], neighbors[0]]
-                    
-                    # Count transitions from 0 to 1 in circular neighborhood
+                    P = [neighbors[1], neighbors[2], neighbors[5], neighbors[8],
+                         neighbors[7], neighbors[6], neighbors[3], neighbors[0]]
+
                     A = sum((P[k] == 0 and P[(k + 1) % 8] == 1) for k in range(8))
+                    B = sum(P)
                     
-                    # Compute conditions for pixel removal
-                    if (2 <= sum(P) and A == 1 and P[0] * P[2] * P[4] == 0 and P[0] * P[4] * P[6] == 0):
+                    if (2 <= B <= 6 and A == 1 and P[0] * P[2] * P[4] == 0 and P[2] * P[4] * P[6] == 0):
                         to_remove[i, j] = 1
-        
-        # Remove pixels marked for deletion
+
         image[to_remove == 1] = 0
-        changed = np.any(to_remove)  # Check if any pixel was removed
+        changed = np.any(to_remove)
 
-    return image * 255  # Convert back to 0-255 scale
+        # Second sub-iteration
+        to_remove = np.zeros((img_h, img_w), dtype=np.uint8)
+        for i in range(1, img_h - 1):
+            for j in range(1, img_w - 1):
+                if image[i, j] == 1:
+                    neighbors = image[i-1:i+2, j-1:j+2].flatten()
+                    P = [neighbors[1], neighbors[2], neighbors[5], neighbors[8],
+                         neighbors[7], neighbors[6], neighbors[3], neighbors[0]]
 
+                    A = sum((P[k] == 0 and P[(k + 1) % 8] == 1) for k in range(8))
+                    B = sum(P)
+                    
+                    if (2 <= B <= 6 and A == 1 and P[0] * P[2] * P[6] == 0 and P[0] * P[4] * P[6] == 0):
+                        to_remove[i, j] = 1
+
+        image[to_remove == 1] = 0
+        changed = changed or np.any(to_remove)
+
+    # Convert back to 255 format
+    return image * 255
 
 # # # #
 # CALL SELF-IMPLEMENT ---------------------------------
